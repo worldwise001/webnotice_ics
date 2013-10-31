@@ -58,7 +58,8 @@ def format_event(stuff):
     event['abstract'] = stuff[2][7]
   else:
     event['remarks'] = stuff[2][7]
-    event['abstract'] = stuff[2][10]
+    if len(stuff[2][9]['content']) > 0 and stuff[2][9]['content'][0] == 'Abstract:':
+      event['abstract'] = stuff[2][10]
   event['uid'] = utc_dt.strftime('%Y')+'_'+hashlib.md5(event['who']+'|'+event['title']).hexdigest()+'.'+emailfrom
   return event
 
@@ -96,12 +97,18 @@ def dump_ics(dept, name):
     fd.write('LOCATION:'+event['where']+'\n')
     fd.write('DESCRIPTION:'+event['title']+'\\n'+event['who']+', '+event['affiliation']+'\\n\\n')
     if 'remarks' in event:
-      fd.write(event['remarks']+'\\n\\n')
-    fd.write(event['abstract']+'\n')
+      fd.write(event['remarks'])
+      if 'abstract' in event:
+        fd.write('\\n\\n'+event['abstract'])
+    else:
+      if 'abstract' in event:
+        fd.write(event['abstract'])
+    fd.write('\n')
     fd.write('END:VEVENT\n')
   fd.write('END:VCALENDAR\n')
   fd.close()
 
 depts = get_depts()
 for dept in depts:
+  print dept
   dump_ics(dept, depts[dept])
