@@ -110,5 +110,4 @@ def dump_ics(dept, name):
 
 depts = get_depts()
 for dept in depts:
-  print dept
   dump_ics(dept, depts[dept])
