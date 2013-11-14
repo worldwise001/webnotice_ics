@@ -48,18 +48,31 @@ def format_event(stuff):
   event['when_end'] = (utc_dt + datetime.timedelta(hours=1)).strftime('%Y%m%dT%H%M00Z')
   event['seq'] = utc_dt.strftime('%Y%m%d%H')
   event['where'] = stuff[0][1][3:]
-  event['venue'] = stuff[1][0]['content'][0]
-  who = stuff[2][1]
-  whosplit = who.split(', ', 1)
-  event['who'] = whosplit[0]
-  event['affiliation'] = whosplit[1]
-  event['title'] = stuff[2][4]['content'][0]['content'][0]
-  if stuff[2][6]['content'][0] == 'Abstract:':
-    event['abstract'] = stuff[2][7]
+  if len(stuff) > 2:
+    event['venue'] = stuff[1][0]['content'][0]
+    who = stuff[2][1]
+    whosplit = who.split(', ', 1)
+    event['who'] = whosplit[0]
+    event['affiliation'] = whosplit[1]
+    event['title'] = stuff[2][4]['content'][0]['content'][0]
+    if stuff[2][6]['content'][0] == 'Abstract:':
+      event['abstract'] = stuff[2][7]
+    else:
+      event['remarks'] = stuff[2][7]
+      if len(stuff[2][9]['content']) > 0 and stuff[2][9]['content'][0] == 'Abstract:':
+        event['abstract'] = stuff[2][10]
   else:
-    event['remarks'] = stuff[2][7]
-    if len(stuff[2][9]['content']) > 0 and stuff[2][9]['content'][0] == 'Abstract:':
-      event['abstract'] = stuff[2][10]
+    stuff.insert(1, [])
+    who = stuff[2][1]
+    whosplit = who.split(', ', 1)
+    event['who'] = whosplit[0]
+    event['affiliation'] = whosplit[1]
+    event['title'] = stuff[2][4]['content'][0]['content'][0]
+    event['venue'] = ''
+    remarks = stuff[0][2]['content'][0]['content'][0] + ' - '
+    remarks += stuff[0][4]['content'][0]['content'][0] + '\\n\\n'
+    remarks += stuff[0][6]['content'][0]
+    event['remarks'] = remarks
   event['uid'] = utc_dt.strftime('%Y')+'_'+hashlib.md5(event['who']+'|'+event['title']).hexdigest()+'.'+emailfrom
   return event
 
