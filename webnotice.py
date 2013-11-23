@@ -6,6 +6,7 @@ import hashlib
 
 wnotice = 'https://www.math.uwaterloo.ca/~wnotice/notice_prgms/wreg'
 emailfrom = 'wnotice@math.uwaterloo.ca'
+debug = False
 
 def get_depts():
   res = tidyxml.parse_url(wnotice+'/view_notice.pl')
@@ -37,6 +38,27 @@ def get_depts():
   deptlist['all_depts'] = 'All Departments'
   return deptlist
 
+def search_and_extract(stuff, key):
+  for i in range(0, len(stuff)):
+    e = stuff[i]
+    if (type(e) == dict) and (len(e['content']) > 0) and (e['content'][0]) == (key+':'):
+      j = i+1
+      data = ''
+      while (j < len(stuff)) and ((type(stuff[j]) != dict) or (stuff[j]['name'] != 'br')):
+        if type(stuff[j]) == dict:
+          if stuff[j]['name'] == 'p':
+            data += '\n\n'
+          if type(stuff[j]['content'][0]) == dict:
+            data += stuff[j]['content'][0]['content'][0]
+          else:
+            data += stuff[j]['content'][0]
+        else:
+          data += stuff[j]
+        data += ' '
+        j = j+1
+      return data.rstrip()
+  return None
+
 def format_event(stuff):
   event = {}
   when = stuff[0][0]['content'][0].replace('  ', ' ')
@@ -48,31 +70,36 @@ def format_event(stuff):
   event['when_end'] = (utc_dt + datetime.timedelta(hours=1)).strftime('%Y%m%dT%H%M00Z')
   event['seq'] = utc_dt.strftime('%Y%m%d%H')
   event['where'] = stuff[0][1][3:]
+  event['where'] = event['where'].replace(' true', '')
+  extra = None
   if len(stuff) > 2:
     event['venue'] = stuff[1][0]['content'][0]
-    who = stuff[2][1]
-    whosplit = who.split(', ', 1)
-    event['who'] = whosplit[0]
-    event['affiliation'] = whosplit[1]
-    event['title'] = stuff[2][4]['content'][0]['content'][0]
-    if stuff[2][6]['content'][0] == 'Abstract:':
-      event['abstract'] = stuff[2][7]
-    else:
-      event['remarks'] = stuff[2][7]
-      if len(stuff[2][9]['content']) > 0 and stuff[2][9]['content'][0] == 'Abstract:':
-        event['abstract'] = stuff[2][10]
+    event['venue'] = event['venue'].replace('Seminar Seminar', 'Seminar')
   else:
-    stuff.insert(1, [])
-    who = stuff[2][1]
-    whosplit = who.split(', ', 1)
-    event['who'] = whosplit[0]
-    event['affiliation'] = whosplit[1]
-    event['title'] = stuff[2][4]['content'][0]['content'][0]
     event['venue'] = ''
-    remarks = stuff[0][2]['content'][0]['content'][0] + ' - '
-    remarks += stuff[0][4]['content'][0]['content'][0] + '\\n\\n'
-    remarks += stuff[0][6]['content'][0]
-    event['remarks'] = remarks
+    stuff.insert(1, [])
+    extra = [stuff[0][2]['content'][0]['content'][0] + ' - ' + stuff[0][4]['content'][0]['content'][0], stuff[0][6]['content'][0]]
+  who = search_and_extract(stuff[2], 'Speaker')
+  whosplit = who.split(', ', 1)
+  event['who'] = whosplit[0]
+  event['affiliation'] = whosplit[1]
+  title = search_and_extract(stuff[2], 'Title')
+  if title[:1] == '"':
+    title = title[1:]
+  if title[-1:] == '"':
+    title = title[:-1]
+  title = title.replace('``', '"')
+  title = title.replace('\'\'', '"')
+  title = title.replace('""', '"')
+  event['title'] = title
+  event['abstract'] = search_and_extract(stuff[2], 'Abstract')
+  event['remarks'] = search_and_extract(stuff[2], 'Remarks')
+  if extra != None:
+    event['title'] = extra[0] + ' - ' + event['title']
+    if event['remarks'] != None:
+      event['remarks'] = extra[1] + '\n\n' + event['remarks']
+    else:
+      event['remarks'] = extra[1]
   event['uid'] = utc_dt.strftime('%Y')+'_'+hashlib.md5(event['who']+'|'+event['title']).hexdigest()+'.'+emailfrom
   return event
 
@@ -93,6 +120,8 @@ def get_listing(dept):
 
 def dump_ics(dept, name):
   listing = get_listing(dept)
+  if debug == True:
+    return None
   fd = open('webnotice/'+dept+'.ics', 'w')
   fd.write('BEGIN:VCALENDAR\n')
   fd.write('X-WR-CALNAME:Webnotice ('+name+')\n')
@@ -109,13 +138,11 @@ def dump_ics(dept, name):
     fd.write('SUMMARY:'+event['title']+' ('+event['venue']+')\n')
     fd.write('LOCATION:'+event['where']+'\n')
     fd.write('DESCRIPTION:'+event['title']+'\\n'+event['who']+', '+event['affiliation']+'\\n\\n')
-    if 'remarks' in event:
+    if event['remarks'] != None:
       fd.write(event['remarks'])
-      if 'abstract' in event:
-        fd.write('\\n\\n'+event['abstract'])
-    else:
-      if 'abstract' in event:
-        fd.write(event['abstract'])
+      fd.write('\\n\\n')
+    if event['abstract'] != None:
+      fd.write(event['abstract'].replace('\n', '\\n'))
     fd.write('\n')
     fd.write('END:VEVENT\n')
   fd.write('END:VCALENDAR\n')
