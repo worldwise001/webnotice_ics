@@ -32,7 +32,7 @@ def end_element(name):
 
 def char_data(data):
   global cur, s
-  s += str(data.encode('ascii', 'ignore')).replace('\n', ' ')
+  s += str(data.encode('latin1', 'ignore')).replace('\n', ' ')
 
 def parse_url(url):
   global tree, stack, cur, s
@@ -44,7 +44,7 @@ def parse_url(url):
   devnull = open(os.devnull, 'w')
   
   subprocess.call(['wget', '-q', url, '-O', 'tmp.xml'])
-  subprocess.call([tidycmd, '-q', '-asxml', '-m', '-latin1', 'tmp.xml'], stderr=devnull)
+  subprocess.call([tidycmd, '-config', 'tidy.conf', 'tmp.xml'], stderr=devnull)
   
   devnull.close()
   
