@@ -69,21 +69,30 @@ def format_event(stuff):
   event['when'] = utc_dt.strftime('%Y%m%dT%H%M00Z')
   event['when_end'] = (utc_dt + datetime.timedelta(hours=1)).strftime('%Y%m%dT%H%M00Z')
   event['seq'] = utc_dt.strftime('%Y%m%d%H')
-  event['where'] = stuff[0][1][3:]
-  event['where'] = event['where'].replace(' true', '')
   extra = None
-  if len(stuff) > 2:
-    event['venue'] = stuff[1][0]['content'][0]
-    event['venue'] = event['venue'].replace('Seminar Seminar', 'Seminar')
+  if (len(stuff[0][0]['content']) > 1) and (stuff[0][0]['content'][1]['content'][0] == '*** CANCELLED ***'):
+    extra = [stuff[0][0]['content'][1]['content'][0], '']
+    event['venue'] = stuff[0][2]['content'][0]
+    event['whofull'] = stuff[1][0]
+    event['where'] = ''
+    event['title'] = stuff[1][2]['content'][0]['content'][0]
+    event['abstract'] = None
+    event['remarks'] = None
   else:
-    event['venue'] = ''
-    stuff.insert(1, [])
-    extra = [stuff[0][2]['content'][0]['content'][0] + ' - ' + stuff[0][4]['content'][0]['content'][0], stuff[0][6]['content'][0]]
-  who = search_and_extract(stuff[2], 'Speaker')
-  whosplit = who.split(', ', 1)
-  event['who'] = whosplit[0]
-  event['affiliation'] = whosplit[1]
-  title = search_and_extract(stuff[2], 'Title')
+    event['where'] = stuff[0][1][3:]
+    event['where'] = event['where'].replace(' true', '')
+    if len(stuff) > 2:
+      event['venue'] = stuff[1][0]['content'][0]
+    else:
+      event['venue'] = ''
+      stuff.insert(1, [])
+      extra = [stuff[0][2]['content'][0]['content'][0] + ' - ' + stuff[0][4]['content'][0]['content'][0], stuff[0][6]['content'][0]]
+    event['whofull'] = search_and_extract(stuff[2], 'Speaker')
+    event['title'] = search_and_extract(stuff[2], 'Title')
+    event['abstract'] = search_and_extract(stuff[2], 'Abstract')
+    event['remarks'] = search_and_extract(stuff[2], 'Remarks')
+  # cleaning up data
+  title = event['title']
   if title[:1] == '"':
     title = title[1:]
   if title[-1:] == '"':
@@ -92,8 +101,10 @@ def format_event(stuff):
   title = title.replace('\'\'', '"')
   title = title.replace('""', '"')
   event['title'] = title
-  event['abstract'] = search_and_extract(stuff[2], 'Abstract')
-  event['remarks'] = search_and_extract(stuff[2], 'Remarks')
+  whosplit = event['whofull'].split(', ', 1)
+  event['who'] = whosplit[0]
+  event['affiliation'] = whosplit[1]
+  event['venue'] = event['venue'].replace('Seminar Seminar', 'Seminar')
   if extra != None:
     event['title'] = extra[0] + ' - ' + event['title']
     if event['remarks'] != None:
@@ -101,6 +112,9 @@ def format_event(stuff):
     else:
       event['remarks'] = extra[1]
   event['uid'] = utc_dt.strftime('%Y')+'_'+hashlib.md5(event['who']+'|'+event['title']).hexdigest()+'.'+emailfrom
+  #pprint.pprint(stuff)
+  #pprint.pprint(event)
+  #print '\n\n'
   return event
 
 def get_listing(dept):
