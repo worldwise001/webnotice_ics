@@ -43,7 +43,7 @@ def parse_url(url):
   
   devnull = open(os.devnull, 'w')
   
-  subprocess.call(['wget', '-q', url, '-O', 'tmp.xml'])
+  subprocess.call(['wget', '--no-check-certificate', '-q', url, '-O', 'tmp.xml'])
   subprocess.call([tidycmd, '-config', 'tidy.conf', 'tmp.xml'], stderr=devnull)
   
   devnull.close()

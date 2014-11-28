@@ -3,6 +3,7 @@ import pprint
 import datetime
 import pytz
 import hashlib
+import re
 
 wnotice = 'https://www.math.uwaterloo.ca/~wnotice/notice_prgms/wreg'
 emailfrom = 'wnotice@math.uwaterloo.ca'
@@ -63,6 +64,7 @@ def format_event(stuff):
   event = {}
   when = stuff[0][0]['content'][0].replace('  ', ' ')
   local = pytz.timezone ('America/Toronto')
+  when = re.sub(r'[^\w:, ]+', '', when)
   naive = datetime.datetime.strptime(when, '%A, %d %B %Y, %I:%M%p')
   local_dt = local.localize(naive, is_dst=None)
   utc_dt = local_dt.astimezone (pytz.utc)
